@@ -1,36 +1,37 @@
 #[cfg(test)]
 mod tests {
+    use crate::menu::Menu;
+
     use sfml::{
         graphics::{Color, RenderWindow, RenderTarget},
         system::{Vector2f},
-        window::{Style, Event, Key},
+        window::{Event, Key, Style},
     };
 
-    use crate::menu::Menu;
-
     #[test]
-    fn run_system() {
+    fn test_menu() {
         let mut window = RenderWindow::new(
-            (1920, 1080),
+            (1280, 720),
             "SFML window",
-            Style::CLOSE | Style::FULLSCREEN,
+            Style::CLOSE,
             &Default::default()
         );
 
-        let mut my_menu: Menu = Menu::with_position(Vector2f::new(64.0, 128.0));
-        my_menu.add_option(String::from("Play."), String::from("RedHatMono-Regular.ttf"), Vector2f::new(0.0, 0.0), 32, Color::GREEN);
-        my_menu.add_option(String::from("Settings."), String::from("RedHatMono-Regular.ttf"), Vector2f::new(0.0, 0.0), 32, Color::GREEN);
-        my_menu.add_option(String::from("Exit."), String::from("RedHatMono-Regular.ttf"), Vector2f::new(0.0, 0.0), 32, Color::GREEN);
+        let mut my_menu: Menu = Menu::new();
+        my_menu.add_text(String::from("Test 1."), String::from("RedHatMono.ttf"), 32, Vector2f::new(16.0, 0.0), Color::WHITE);
+        my_menu.add_text(String::from("Test 2."), String::from("RedHatMono.ttf"), 32, Vector2f::new(16.0, 64.0), Color::WHITE);
+        my_menu.add_text(String::from("Test 3."), String::from("RedHatMono.ttf"), 32, Vector2f::new(16.0, 128.0), Color::WHITE);
 
         while window.is_open() {
 
             while let Some(event) = window.poll_event() {
                 match event {
                     Event::Closed | Event::KeyPressed { code: Key::Escape, .. } => window.close(),
+
                     _ => {}
                 }
 
-                my_menu.event(&event);
+                my_menu.event(event);
             }
 
             window.clear(Color::BLACK);
@@ -38,92 +39,59 @@ mod tests {
             window.display();
         }
     }
+
 }
 
-pub mod menu {
-    use sfml:: {
-        graphics::{Color, Font, RenderWindow, Text, TextStyle, RenderTarget, Transformable},
+mod menu {
+    use sfml::{
+        graphics::{Font, Text, TextStyle, Color, RenderWindow, RenderTarget, Transformable},
         system::{Vector2f},
         window::{Event, Key},
     };
 
-    use crate::menu::menu_text::MenuText;
+    use crate::menu::menu_text::*;
 
     pub struct Menu {
         options: Vec<MenuText>,
         curr_option: u32,
-
-        position: Vector2f,
     }
 
     impl Menu {
-        pub fn new() -> Self {
-            Self {
+        pub fn new() -> Self{
+            Self{
                 options: Vec::new(),
                 curr_option: 0,
-
-                position: Vector2f::new(0.0, 0.0),
             }
         }
 
-        pub fn with_position(position: Vector2f) -> Self {
-            Self {
-                options: Vec::new(),
-                curr_option: 0,
+        pub fn add_text(&mut self, caption: String, font: String, size: u32, position: Vector2f, text_color: Color) {
+            self.options.push(MenuText::with_params(caption, font, size, position, text_color));
+        }
 
-                position: position,
+        pub fn draw(&self, window: &mut RenderWindow) {
+            for i in 0..self.options.len() {
+                self.options[i].draw(window, self.curr_option == i as u32);
             }
         }
 
-        pub fn add_option_auto(&mut self) {
-            self.options.push(MenuText::new_auto());
-        }
-
-        pub fn add_option(&mut self, text: String, font: String, position: Vector2f, size: u32, color: Color) {
-            if self.options.len() == 0 {
-                self.options.push(MenuText::new(text, font, position, size, color));
-            } else {
-                let last = (self.options.len() as u32 - 1) as usize;
-                self.options.push(MenuText::new(text, font, Vector2f::new(self.options[last].get_position().x, ((self.options[last].get_size() + 32) * (last as u32 + 1)) as f32), size, color));
-            }
-        }
-
-        pub fn event(&mut self, event: &Event) {
+        pub fn event(&mut self, event: Event) {
             match event {
                 Event::KeyPressed { code: Key::Down, .. } => {
-                    if self.curr_option < self.options.len() as u32 - 1
-                    { self.curr_option += 1; }
-                    else
-                    { self.curr_option = 0; }
+                    if self.curr_option < self.options.len() as u32 - 1 {
+                        self.curr_option += 1;
+                    } else {
+                        self.curr_option = 0;
+                    }
                 }
                 Event::KeyPressed { code: Key::Up, .. } => {
-                    if self.curr_option > 0
-                    { self.curr_option -= 1; }
-                    else
-                    { self.curr_option = self.options.len() as u32 - 1; }
+                    if self.curr_option > 0 {
+                        self.curr_option -= 1;
+                    } else {
+                        self.curr_option = self.options.len() as u32 - 1;
+                    }
                 }
 
                 _ => {}
-            }
-        }
-
-        pub fn draw(&mut self, window: &mut RenderWindow) {
-            for i in 0..self.options.len() {
-                let tmp_font = Font::from_file(self.options[i].get_font()).unwrap();
-                let mut tmp_text = Text::new(self.options[i].get_text(), &tmp_font, *self.options[i].get_size());
-
-                tmp_text.set_position(Vector2f::new(self.options[i].get_position().x + self.position.x, self.options[i].get_position().y + self.position.y));
-                tmp_text.set_character_size(*self.options[i].get_size());
-
-                tmp_text.set_fill_color(*self.options[i].get_color());
-
-                if i as u32 == self.curr_option {
-                    tmp_text.set_style(TextStyle::UNDERLINED);
-                } else {
-                    tmp_text.set_style(TextStyle::REGULAR);
-                }
-
-                window.draw(&tmp_text);
             }
         }
     }
@@ -132,47 +100,59 @@ pub mod menu {
         use crate::menu::*;
 
         pub struct MenuText {
-            text: String,
+            caption: String,
             font: String,
-
-            position: Vector2f,
             size: u32,
 
-            color: Color,
+            position: Vector2f,
+            text_color: Color,
         }
 
         impl MenuText {
-            pub fn new_auto() -> Self {
+            pub fn new() -> Self {
                 Self {
-                    text: String::from("Blank"),
-                    font: String::from("RedHatMono-Regular.ttf"),
+                    caption: String::from("Test."),
+                    font: String::from("RedHatMono.ttf"),
+                    size: 30,
 
                     position: Vector2f::new(0.0, 0.0),
-                    size: 32,
-
-                    color: Color::GREEN,
+                    text_color: Color::WHITE,
                 }
             }
 
-            pub fn new(text: String, font: String, position: Vector2f, size: u32, color: Color) -> Self {
+            pub fn with_params(caption: String, font: String, size: u32, position: Vector2f, text_color: Color) -> Self {
                 Self {
-                    text,
+                    caption,
                     font,
-
-                    position,
                     size,
 
-                    color,
+                    position,
+                    text_color,
                 }
             }
 
-            pub fn get_text(&self) -> &String { &self.text }
-            pub fn get_font(&self) -> &String { &self.font }
+            pub fn draw(&self, window: &mut RenderWindow, underline: bool) {
+                let tmp_font = Font::from_file(self.get_font()).unwrap();
+                let mut tmp_text = Text::new(self.get_caption(), &tmp_font, *self.get_size());
 
-            pub fn get_position(&self) -> &Vector2f { &self.position }
+                tmp_text.set_position(*self.get_position());
+                tmp_text.set_fill_color(*self.get_text_color());
+
+                if underline == true {
+                    tmp_text.set_style(TextStyle::UNDERLINED);
+                } else {
+                    tmp_text.set_style(TextStyle::REGULAR);
+                }
+
+                window.draw(&tmp_text);
+            }
+
+            pub fn get_caption(&self) -> &String { &self.caption }
+            pub fn get_font(&self) -> &String { &self.font }
             pub fn get_size(&self) -> &u32 { &self.size }
 
-            pub fn get_color(&self) -> &Color { &self.color }
+            pub fn get_position(&self) -> &Vector2f { &self.position }
+            pub fn get_text_color(&self) -> &Color { &self.text_color }
         }
     }
 }
